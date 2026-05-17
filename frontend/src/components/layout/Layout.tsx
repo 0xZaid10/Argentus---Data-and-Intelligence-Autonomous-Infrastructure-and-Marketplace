@@ -1,14 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Menu, Send, X } from 'lucide-react'
+import { Menu, X } from 'lucide-react'
 import { useState, type PropsWithChildren } from 'react'
 import { Link, useLocation } from 'wouter'
 import { APP_COPY } from '@/config'
-import { DEMO_AGENTS } from '@/lib/demo-data'
-import { createTask, fetchAgentStatus } from '@/lib/api'
 import { cn } from '@/lib/utils'
-import { Button } from '../ui/Button'
-import { Modal } from '../ui/Modal'
 
 const navItems = [
   { href: '/', label: 'Home' },
@@ -40,31 +35,11 @@ function NavLink({ href, label, onClick }: { href: string; label: string; onClic
 
 export default function Layout({ children }: PropsWithChildren) {
   const [menuOpen, setMenuOpen] = useState(false)
-  const [submitOpen, setSubmitOpen] = useState(false)
-  const [description, setDescription] = useState('')
-  const [, navigate] = useLocation()
-  const queryClient = useQueryClient()
+  useLocation()
 
-  const agentsQuery = useQuery({
-    queryKey: ['agents'],
-    queryFn: fetchAgentStatus,
-    refetchInterval: 30_000,
-  })
-
-  const createTaskMutation = useMutation({
-    mutationFn: (value: string) => createTask(value),
-    onSuccess: (task) => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] })
-      setDescription('')
-      setSubmitOpen(false)
-      navigate(`/tasks/${task.id}`)
-    },
-  })
-
-  const agentData = agentsQuery.data ?? (agentsQuery.isError ? DEMO_AGENTS : [])
-  const activeAgents = agentData.filter((agent) => agent.status === 'active').length
-  const agentsOnline = agentsQuery.isSuccess
-  const statusLabel = agentsOnline ? `${activeAgents} Agents Active` : 'Agents Offline'
+  const activeAgents = 3
+  const agentsOnline = true
+  const statusLabel = `${activeAgents} Agents Active`
   const botHref = 'https://t.me/agent_mesh_coordinator_bot'
 
   return (
@@ -108,11 +83,6 @@ export default function Layout({ children }: PropsWithChildren) {
               <span>Bot</span>
               <span className="font-mono">@agent_mesh_coordinator_bot</span>
             </a>
-
-            <Button onClick={() => setSubmitOpen(true)} size="sm">
-              <Send className="h-4 w-4" />
-              Submit Task
-            </Button>
           </div>
 
           <button
@@ -151,16 +121,6 @@ export default function Layout({ children }: PropsWithChildren) {
                     <span>Bot</span>
                     <span className="font-mono">@agent_mesh_coordinator_bot</span>
                   </a>
-                  <Button
-                    onClick={() => {
-                      setMenuOpen(false)
-                      setSubmitOpen(true)
-                    }}
-                    size="sm"
-                  >
-                    <Send className="h-4 w-4" />
-                    Submit Task
-                  </Button>
                 </div>
               </div>
             </motion.div>
@@ -180,44 +140,6 @@ export default function Layout({ children }: PropsWithChildren) {
           </div>
         </div>
       </footer>
-
-      <Modal
-        description="Create a new intelligence task and route it directly into the Argentus pipeline."
-        onOpenChange={setSubmitOpen}
-        open={submitOpen}
-        title="Submit Task"
-      >
-        <form
-          className="grid gap-4"
-          onSubmit={(event) => {
-            event.preventDefault()
-            createTaskMutation.mutate(description)
-          }}
-        >
-          <label className="grid gap-2 text-sm text-[var(--text-secondary)]">
-            What do you want to research?
-            <textarea
-              className="min-h-32 rounded-3xl border border-[var(--border)] bg-[var(--surface-2)] px-4 py-3 text-[var(--text-primary)] outline-none transition placeholder:text-[var(--text-secondary)] focus:border-[var(--accent-gold-dim)]"
-              onChange={(event) => setDescription(event.target.value)}
-              placeholder="analyze BTC whale accumulation today"
-              required
-              value={description}
-            />
-          </label>
-
-          {createTaskMutation.isError ? (
-            <p className="text-sm text-red-300" role="alert">
-              {createTaskMutation.error.message}
-            </p>
-          ) : null}
-
-          <div className="flex justify-end">
-            <Button disabled={!description.trim() || createTaskMutation.isPending} type="submit">
-              {createTaskMutation.isPending ? 'Submitting...' : 'Research Now'}
-            </Button>
-          </div>
-        </form>
-      </Modal>
     </div>
   )
 }

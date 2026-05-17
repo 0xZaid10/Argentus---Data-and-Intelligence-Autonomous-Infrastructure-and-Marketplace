@@ -75,6 +75,7 @@ body {
   background-position: center top, right top, center top, center top, center top;
   color: var(--text-primary);
   font-family: var(--font-sans);
+  font-weight: 500;
   line-height: 1.55;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -114,6 +115,7 @@ textarea {
 
 :where(main p, main li) {
   text-wrap: pretty;
+  font-weight: 500;
 }
 
 ::selection {
