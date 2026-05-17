@@ -96,7 +96,7 @@ export async function generateAndSendReports({ taskId, cid, escrowUID, fulfillme
 
     // Auto-send to Telegram if chatId provided
     if (chatId && files.length > 0) {
-      const botToken = process.env.COORDINATOR_BOT_TOKEN || '8480584073:AAGJq3yYHqnNfxh_1_-qvo8FItWRiDe65jI'
+      const botToken = process.env.COORDINATOR_BOT_TOKEN || ''
       const captions = {
         summary: '📄 Summary Report',
         report: '📊 Full Intelligence Report',
