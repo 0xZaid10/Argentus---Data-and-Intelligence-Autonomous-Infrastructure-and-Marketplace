@@ -54,6 +54,8 @@ export interface MarketplaceSubmission {
   fulfillment_uid: string | null
   description: string | null
   status: 'pending' | 'approved' | 'rejected'
+  quality_score?: number | null
+  reason?: string | null
   arbitrate_tx: string | null
   collect_tx: string | null
   created_at: string

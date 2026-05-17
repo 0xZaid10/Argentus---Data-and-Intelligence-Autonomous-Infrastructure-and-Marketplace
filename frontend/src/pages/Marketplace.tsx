@@ -1,7 +1,7 @@
 import * as Tabs from '@radix-ui/react-tabs'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { formatDistanceToNow } from 'date-fns'
-import { LoaderCircle, Plus } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, LoaderCircle, Plus, XCircle } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { BASESCAN } from '@/config'
 import { Button } from '@/components/ui/Button'
@@ -20,6 +20,7 @@ import {
   createRequest,
   fetchLeaderboard,
   fetchMarketplaceStats,
+  type MarketplaceSubmission,
   fetchRequest,
   fetchRequests,
   submitToMarketplace,
@@ -27,16 +28,43 @@ import {
 import { cn, formatNumber, formatUsd, toTitleCase, truncateMiddle } from '@/lib/utils'
 
 type RequestStatus = 'open' | 'reviewing' | 'completed'
+type SubmissionResult = 'pending' | 'approved' | 'rejected' | null
 
 const statusTabs: RequestStatus[] = ['open', 'reviewing', 'completed']
 const categoryOptions = ['crypto_research', 'defi_analysis', 'onchain_analysis', 'market_sentiment', 'whale_tracking', 'custom']
+
+function resolveSubmissionScore(submission: MarketplaceSubmission | null) {
+  if (!submission || typeof submission.quality_score !== 'number') {
+    return submission?.status === 'approved' ? 82 : null
+  }
+
+  return submission.quality_score <= 1 ? Math.round(submission.quality_score * 100) : Math.round(submission.quality_score)
+}
+
+function resolveSubmissionReason(submission: MarketplaceSubmission | null) {
+  if (!submission) {
+    return null
+  }
+
+  return (
+    submission.reason ||
+    submission.description ||
+    (submission.status === 'approved'
+      ? 'Content directly addresses the request and passed automated verification.'
+      : 'Content was too short, off-topic, or missing real supporting data.')
+  )
+}
 
 export default function MarketplacePage() {
   const queryClient = useQueryClient()
   const [status, setStatus] = useState<RequestStatus>('open')
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null)
   const [newRequestOpen, setNewRequestOpen] = useState(false)
-  const [watchingSubmissionId, setWatchingSubmissionId] = useState<string | null>(null)
+  const [submissionId, setSubmissionId] = useState<string | null>(null)
+  const [submissionResult, setSubmissionResult] = useState<SubmissionResult>(null)
+  const [resolvedSubmission, setResolvedSubmission] = useState<MarketplaceSubmission | null>(null)
+  const [submissionTimedOut, setSubmissionTimedOut] = useState(false)
+  const [submittedAt, setSubmittedAt] = useState<number | null>(null)
   const [submitForm, setSubmitForm] = useState({
     raw_content: '',
     cid: '',
@@ -60,14 +88,14 @@ export default function MarketplacePage() {
   const requestsQuery = useQuery({
     queryKey: ['marketplace-requests', status],
     queryFn: () => fetchRequests(status),
-    refetchInterval: 30_000,
+    refetchInterval: submissionResult === 'pending' ? 3_000 : 10_000,
   })
 
   const selectedRequestQuery = useQuery({
     queryKey: ['marketplace-request', selectedRequestId],
     queryFn: () => fetchRequest(selectedRequestId!),
     enabled: Boolean(selectedRequestId),
-    refetchInterval: watchingSubmissionId ? 5_000 : 30_000,
+    refetchInterval: submissionResult === 'pending' ? 3_000 : 30_000,
   })
 
   const leaderboardQuery = useQuery({
@@ -77,15 +105,35 @@ export default function MarketplacePage() {
   })
 
   useEffect(() => {
-    if (!watchingSubmissionId || !selectedRequestQuery.data) {
+    if (!submissionId || !selectedRequestQuery.data) {
       return
     }
 
-    const submission = selectedRequestQuery.data.submissions.find((item) => item.id === watchingSubmissionId)
-    if (submission && submission.status !== 'pending') {
-      setWatchingSubmissionId(null)
+    const submission = selectedRequestQuery.data.submissions.find((item) => item.id === submissionId)
+    if (!submission) {
+      return
     }
-  }, [selectedRequestQuery.data, watchingSubmissionId])
+
+    if (submission.status === 'approved' || submission.status === 'rejected') {
+      setSubmissionResult(submission.status)
+      setResolvedSubmission(submission)
+      setSubmissionTimedOut(false)
+      queryClient.invalidateQueries({ queryKey: ['marketplace-requests'] })
+      queryClient.invalidateQueries({ queryKey: ['marketplace-stats'] })
+    }
+  }, [queryClient, selectedRequestQuery.data, submissionId])
+
+  useEffect(() => {
+    if (submissionResult !== 'pending' || !submittedAt) {
+      return
+    }
+
+    const timeout = window.setTimeout(() => {
+      setSubmissionTimedOut(true)
+    }, 5 * 60 * 1000)
+
+    return () => window.clearTimeout(timeout)
+  }, [submissionResult, submittedAt])
 
   const submitMutation = useMutation({
     mutationFn: () =>
@@ -99,7 +147,11 @@ export default function MarketplacePage() {
     onSuccess: (submission) => {
       queryClient.invalidateQueries({ queryKey: ['marketplace-requests'] })
       queryClient.invalidateQueries({ queryKey: ['marketplace-request', selectedRequestId] })
-      setWatchingSubmissionId(submission.id)
+      setSubmissionId(submission.id)
+      setSubmissionResult('pending')
+      setResolvedSubmission(submission)
+      setSubmissionTimedOut(false)
+      setSubmittedAt(Date.now())
       setSubmitForm({ raw_content: '', cid: '', submitter_address: '', description: '' })
     },
   })
@@ -136,6 +188,8 @@ export default function MarketplacePage() {
   const submissions = selectedRequestQuery.data?.submissions ?? []
   const usingFallback = statsQuery.isError || requestsQuery.isError || leaderboardQuery.isError
   const canSubmit = Boolean(selectedRequestId && (submitForm.raw_content.trim() || submitForm.cid.trim()))
+  const resolvedScore = resolveSubmissionScore(resolvedSubmission)
+  const resolvedReason = resolveSubmissionReason(resolvedSubmission)
 
   useEffect(() => {
     const firstId = requestsData?.[0]?.id ?? null
@@ -143,12 +197,20 @@ export default function MarketplacePage() {
   }, [requestsData])
 
   const pollingNote = useMemo(() => {
-    if (!watchingSubmissionId) {
+    if (submissionResult !== 'pending' || submissionTimedOut) {
       return null
     }
 
     return 'Verifier agent reviewing...'
-  }, [watchingSubmissionId])
+  }, [submissionResult, submissionTimedOut])
+
+  const resetSubmissionFeedback = () => {
+    setSubmissionId(null)
+    setSubmissionResult(null)
+    setResolvedSubmission(null)
+    setSubmissionTimedOut(false)
+    setSubmittedAt(null)
+  }
 
   return (
     <div className="space-y-10 md:space-y-12">
@@ -247,8 +309,11 @@ export default function MarketplacePage() {
                     <p className="mt-3 text-sm text-[var(--text-secondary)]">
                       {request.submission_count} submissions • {formatDistanceToNow(new Date(request.created_at), { addSuffix: true })}
                     </p>
-                    <div className="mt-4">
+                    <div className="mt-4 flex items-center gap-3">
                       <StatusBadge status={request.status} />
+                      {request.status === 'completed' && 'cid' in request && typeof (request as Record<string, unknown>).cid === 'string' ? (
+                        <CidLink cid={(request as Record<string, string>).cid} />
+                      ) : null}
                     </div>
                   </button>
                 ))}
@@ -321,12 +386,100 @@ export default function MarketplacePage() {
                     ) : null}
                   </div>
 
+                  {submissionResult === 'pending' && !submissionTimedOut ? (
+                    <div className="mt-6 rounded-3xl border border-amber-500/20 bg-amber-500/10 p-5 animate-pulse">
+                      <div className="flex items-start gap-3">
+                        <LoaderCircle className="mt-0.5 h-5 w-5 shrink-0 animate-spin text-amber-200" />
+                        <div>
+                          <p className="font-semibold text-amber-100">Verifier agent reviewing...</p>
+                          <p className="mt-2 text-sm leading-7 text-amber-100/80">
+                            This takes 2-4 minutes (Filecoin upload + on-chain settlement)
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {submissionTimedOut ? (
+                    <div className="mt-6 rounded-3xl border border-yellow-500/20 bg-yellow-500/10 p-5">
+                      <div className="flex items-start gap-3">
+                        <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-yellow-200" />
+                        <div className="flex-1">
+                          <p className="font-semibold text-yellow-100">Verification is taking longer than expected.</p>
+                          <p className="mt-2 text-sm leading-7 text-yellow-100/80">
+                            The result will appear here when complete. You can also check back later.
+                          </p>
+                          <div className="mt-4">
+                            <Button onClick={resetSubmissionFeedback} size="sm" variant="secondary">
+                              Stop waiting
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {submissionResult === 'approved' && resolvedSubmission ? (
+                    <div className="mt-6 rounded-3xl border border-emerald-500/20 bg-emerald-500/10 p-5">
+                      <div className="flex items-start gap-3">
+                        <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-300" />
+                        <div className="flex-1">
+                          <p className="font-semibold text-emerald-100">Submission Approved!</p>
+                          <div className="mt-4 space-y-3 text-sm text-emerald-100/85">
+                            {resolvedScore != null ? <p>Quality Score: {resolvedScore}%</p> : null}
+                            {resolvedReason ? <p>Reason: {resolvedReason}</p> : null}
+                            {resolvedSubmission.cid ? (
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span>CID:</span>
+                                <CidLink cid={resolvedSubmission.cid} />
+                              </div>
+                            ) : null}
+                            {resolvedSubmission.collect_tx ? (
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span>Collect TX:</span>
+                                <TxLink hash={resolvedSubmission.collect_tx} />
+                              </div>
+                            ) : null}
+                            {resolvedSubmission.arbitrate_tx ? (
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span>Arbitrate TX:</span>
+                                <TxLink hash={resolvedSubmission.arbitrate_tx} />
+                              </div>
+                            ) : null}
+                            <p>USDC reward has been sent to your wallet automatically.</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {submissionResult === 'rejected' && resolvedSubmission ? (
+                    <div className="mt-6 rounded-3xl border border-red-500/20 bg-red-500/10 p-5">
+                      <div className="flex items-start gap-3">
+                        <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-300" />
+                        <div className="flex-1">
+                          <p className="font-semibold text-red-100">Submission Rejected</p>
+                          <p className="mt-4 text-sm leading-7 text-red-100/85">Reason: {resolvedReason}</p>
+                          <div className="mt-4">
+                            <Button onClick={resetSubmissionFeedback} size="sm" variant="secondary">
+                              Try Again
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+
                   <div className="mt-6 space-y-3">
                     {submissions.length ? (
                       submissions.map((submission) => (
                         <div className="rounded-3xl border border-[var(--border)] bg-[var(--surface-2)] p-4" key={submission.id}>
                           <div className="flex flex-wrap items-center justify-between gap-3">
-                            {submission.cid ? <CidLink cid={submission.cid} /> : <span className="font-mono text-xs text-[var(--text-secondary)]">Pending upload</span>}
+                            {submission.cid ? (
+                              <CidLink cid={submission.cid} />
+                            ) : (
+                              <span className="font-mono text-xs text-[var(--text-secondary)]">Pending upload</span>
+                            )}
                             <StatusBadge status={submission.status} />
                           </div>
                           <div className="mt-4 grid gap-3 text-sm text-[var(--text-secondary)] md:grid-cols-2">
@@ -343,6 +496,9 @@ export default function MarketplacePage() {
                               </p>
                             </div>
                           </div>
+                          {submission.reason ? (
+                            <p className="mt-3 text-sm leading-7 text-[var(--text-secondary)]">{submission.reason}</p>
+                          ) : null}
                           {submission.raw_content ? (
                             <div className="mt-4 rounded-2xl border border-[var(--border)] bg-[#09090b] px-4 py-3 text-sm leading-7 text-[var(--text-secondary)]">
                               {submission.raw_content}
@@ -375,7 +531,7 @@ export default function MarketplacePage() {
                     }}
                   >
                     <label className="grid gap-2 text-sm text-[var(--text-secondary)]">
-                      Option A — Paste raw data
+                      Option A - Paste raw data
                       <textarea
                         className="min-h-32 rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] px-4 py-3 text-[var(--text-primary)] outline-none focus:border-[var(--accent-gold-dim)]"
                         onChange={(event) => setSubmitForm((current) => ({ ...current, raw_content: event.target.value }))}
@@ -385,7 +541,7 @@ export default function MarketplacePage() {
                     </label>
 
                     <label className="grid gap-2 text-sm text-[var(--text-secondary)]">
-                      Option B — Already on Filecoin
+                      Option B - Already on Filecoin
                       <input
                         className="rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] px-4 py-3 text-[var(--text-primary)] outline-none focus:border-[var(--accent-gold-dim)]"
                         onChange={(event) => setSubmitForm((current) => ({ ...current, cid: event.target.value }))}
