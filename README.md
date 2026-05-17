@@ -95,7 +95,7 @@ All run on [OpenClaw](https://openclaw.dev) with Claude via [TokenRouter](https:
 | 🎯 **Coordinator** | Orchestrator | Receives tasks via Telegram, routes to research agent, sends results |
 | 🔬 **Research** | Intelligence | Pulls data from 7 APIs + web search, generates report, pins to Filecoin |
 | ⚖️ **Verifier** | Quality oracle | Fetches CID from IPFS, evaluates quality, arbitrates escrow on-chain |
-| 💹 **Trader** | Market monitor | Monitors signals continuously, heartbeat every 2 hours |
+| 💹 **Trader(Under Development)** | Market monitor | Monitors signals continuously, heartbeat every 2 hours |
 
 ---
 
