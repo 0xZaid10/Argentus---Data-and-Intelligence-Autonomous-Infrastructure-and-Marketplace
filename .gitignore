@@ -1,0 +1,13 @@
+echo ".env
+*.env
+node_modules/
+.openclaw/
+/tmp/
+*.log
+*.pdf
+agentmesh.db
+.nexis/
+dist/
+.tsbuildinfo
+Zone.Identifier
+*.Zone.Identifier" > E:\ipfs\.gitignore

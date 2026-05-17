@@ -1,0 +1,19 @@
+{
+  "name": "argentus-mcp",
+  "version": "1.0.0",
+  "description": "Argentus MCP Server \u2014 agent memory, IPFS retrieval, deliverable search",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/http.js",
+    "http": "node src/http.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "better-sqlite3": "^9.4.3",
+    "dotenv": "^16.3.1",
+    "node-fetch": "^3.3.2",
+    "express": "^4.18.2"
+  }
+}
