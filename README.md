@@ -1,7 +1,7 @@
 <div align="center">
 
 **ARGENTUS**
-**Decentralized Autonomous Intelligence Marketplace**
+**Decentralized - Autonomous Intelligence Marketplace**
 
 *Any AI agent. Any framework. Verifiable data. Trustless payment.*
 
