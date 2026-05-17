@@ -1,21 +1,16 @@
-# Nexis
+# Argentus Research Service
 
-**Private autonomous research and intelligence agent.**
+**Autonomous crypto intelligence engine — core research infrastructure for the Argentus marketplace.**
 
-Give it a goal — analyze a token, track wallets, run competitive intelligence, research a market — and it plans and executes complex multi-step workflows continuously, without you touching it again.
-
-Every request is routed through [Gensyn AXL](https://gensyn.ai)'s encrypted P2P mesh. Research sessions persist on [0G](https://0g.ai) decentralized storage. Agents pay for data autonomously via [x402](https://x402.org) micropayments. No API, RPC, or data provider can profile your identity or intent.
+Give it a goal and it plans, executes, and delivers structured intelligence reports — stored permanently on Filecoin mainnet with cryptographic proof.
 
 ---
 
 ## How it works
-
-```
-User goal → Planner → Orchestrator → [Gensyn AXL router] → Tools → Claude API → 0G memory
-                                              ↑
-                              All outbound requests intercepted here
-                              No external endpoint sees direct connection
-```
+Goal → Planner → Orchestrator → Capabilities → LLM Summary → Filecoin Pin → CID
+↓
+DataAggregator (7 APIs) + SerpApi (web search)
+Onchain (Etherscan) + Community (Reddit/HackerNews)
 
 ---
 
@@ -24,74 +19,55 @@ User goal → Planner → Orchestrator → [Gensyn AXL router] → Tools → Cla
 | Layer | Technology |
 |---|---|
 | Agent brain | TypeScript orchestrator + capability registry |
-| Privacy routing | Gensyn AXL — encrypted P2P mesh |
-| Persistent memory | 0G decentralized storage |
-| Anonymous payments | x402 protocol |
-| Identity | ENS |
-| Automation | KeeperHub scheduled triggers |
-| LLM | Anthropic Claude API |
+| Persistent memory | SQLite + MCP memory server |
+| Storage | Filecoin mainnet via filecoin-pin (PDP proofs) |
+| LLM | Claude Opus via TokenRouter |
+| Web search | SerpApi (250 free/month) |
+| Onchain data | Etherscan V2, Mempool.space |
+| Market data | CoinGecko, DeFiLlama, Fear & Greed |
+
+---
+
+## API
+POST /api/research/sync     — run research, wait for result (returns CID)
+POST /api/research          — run in background
+GET  /api/research/sessions/:userId
+GET  /api/research/session/:sessionId
+GET  /api/research/queue
+GET  /health
+
+### Example
+
+```bash
+curl -X POST http://localhost:3000/api/research/sync \
+  -H "Content-Type: application/json" \
+  -d '{"goal": "analyze BTC whale accumulation today", "userId": "my-agent"}'
+```
+
+Response includes `cid` — a real Filecoin CID proving permanent storage.
 
 ---
 
 ## Capabilities
 
-- **Onchain research** — wallet analysis, token tracking, transaction patterns
-- **Market intelligence** — pricing landscapes, feature matrices, hiring signals
-- **Competitive intel** — week-over-week competitor tracking, decision generation
-- **Reddit analysis** — pain points, sentiment, feature gaps from community data
-- **Content generation** — research-grounded blog posts, threads, briefs
-
-All capabilities route through the privacy layer. No intent leakage.
+- **Onchain** — wallet analysis, token tracking, multi-chain data
+- **Market** — pricing, TVL, sentiment, competitive analysis
+- **Community** — Reddit/HackerNews sentiment, pain points
+- **Web search** — live SerpApi results, 4 queries per run
 
 ---
 
 ## Getting started
 
 ```bash
-# 1. Clone
-git clone https://github.com/0xZaid10/Nexis.git
-cd Nexis
-
-# 2. Install dependencies
 npm install
-
-# 3. Configure environment
 cp .env.example .env
-# Fill in your keys
-
-# 4. Download AXL binary (Gensyn)
-# Place in axl-node/axl and chmod +x
-
-# 5. Run
+# Fill in ANTHROPIC_API_KEY, SERPAPI_KEY, ETHERSCAN_API_KEY, FILECOIN_PRIVATE_KEY
 npm run dev
 ```
 
 ---
 
-## Project structure
+## Part of Argentus
 
-```
-src/
-├── agent/          # Orchestrator, planner, capabilities
-├── privacy/        # AXL sidecar + request router
-├── memory/         # SQLite cache + 0G decentralized storage
-├── payments/       # x402 middleware + wallet
-├── identity/       # ENS resolution
-├── scheduler/      # KeeperHub webhook handler
-├── services/       # LLM, scraper, Reddit, social
-├── api/            # Express server + routes
-├── utils/          # Circuit breaker, queue, logger
-└── types/          # Global TypeScript types
-```
-
----
-
-## Built for
-
-[ETHGlobal OpenAgents 2026](https://ethglobal.com/events/openagents) — Privacy track
-
-**Sponsor integrations:** Gensyn · 0G · x402 · ENS · KeeperHub
-
----
-
-*Built by [@0xZaid](https://twitter.com/0xZaid_)*
+This service is the intelligence layer of the [Argentus](https://github.com/0xZaid10/Argentus) decentralized data marketplace. Any AI agent can call this service to get verifiable crypto intelligence stored on Filecoin.
