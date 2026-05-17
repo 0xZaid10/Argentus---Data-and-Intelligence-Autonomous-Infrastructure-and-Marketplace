@@ -1,9 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 import { Download, ExternalLink } from 'lucide-react'
-import type { ReactNode } from 'react'
 import ReactMarkdown from 'react-markdown'
 import { useParams } from 'wouter'
-import { API_BASE, BASESCAN_BASE, IPFS_GATEWAY } from '@/config'
+import { API_BASE, BASESCAN, IPFS_GATEWAY } from '@/config'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { CidLink } from '@/components/ui/CidLink'
@@ -53,13 +52,23 @@ function resolveReportDownload(task: Record<string, unknown>) {
   return null
 }
 
-function ProofRow({ label, value, children }: { label: string; value?: string | null; children?: ReactNode }) {
+function ProofRow({ label, value, link }: { label: string; value?: string | null; link?: string }) {
   return (
-    <div className="grid gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] px-4 py-4 md:grid-cols-[10rem,1fr] md:items-center">
+    <div className="grid gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] px-4 py-4 md:grid-cols-[11rem,1fr] md:items-center">
       <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--text-secondary)]">{label}</p>
-      <div className="flex flex-wrap items-center gap-2 text-sm text-[var(--text-primary)]">
-        {children ?? (value ? <span className="font-mono">{truncateMiddle(value, 14, 8)}</span> : <span>Unavailable</span>)}
-      </div>
+      {value ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-mono text-sm text-[var(--text-primary)]">{truncateMiddle(value, 14, 8)}</span>
+          <CopyButton label={label} value={value} />
+          {link ? (
+            <a className="text-amber-300 hover:text-amber-200" href={link} rel="noreferrer" target="_blank">
+              <ExternalLink className="h-4 w-4" />
+            </a>
+          ) : null}
+        </div>
+      ) : (
+        <span className="text-sm text-[var(--text-secondary)]">Unavailable</span>
+      )}
     </div>
   )
 }
@@ -75,7 +84,7 @@ export default function TaskDetailPage() {
   const ipfsQuery = useQuery({
     queryKey: ['task-report', taskQuery.data?.result_cid],
     queryFn: () => fetchIpfsReport<ReportPayload>(taskQuery.data!.result_cid!, IPFS_GATEWAY),
-    enabled: Boolean(taskQuery.data?.result_cid),
+    enabled: Boolean(taskQuery.data?.result_cid?.startsWith('bafy')),
   })
 
   if (taskQuery.isError) {
@@ -93,31 +102,24 @@ export default function TaskDetailPage() {
 
   return (
     <div className="space-y-10 md:space-y-12">
-      {usingFallback ? (
-        <FallbackNotice message="Showing a demo task because the live backend is unavailable or this task was opened from placeholder content." />
-      ) : null}
+      {usingFallback ? <FallbackNotice message="Showing placeholder task detail because live task data is unavailable." /> : null}
       <SectionHeader
-        description="Inspect escrow, fulfillment, CID storage, arbitration, and the structured intelligence payload for a single task."
+        description="Inspect the task status, Filecoin storage, on-chain proof, and report content in one place."
         eyebrow="Task Detail"
-        title={task.description}
+        title={`TASK-${truncateMiddle(task.id, 8, 0)}`}
       />
 
       <Card>
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-3">
-              <span className="rounded-full border border-[var(--border)] px-3 py-1 font-mono text-xs text-[var(--text-secondary)]">
-                {truncateMiddle(task.id, 10, 6)}
-              </span>
               <StatusBadge status={task.status} />
               <SignalBadge signal={task.signal} />
+              <span className="text-xs text-[var(--text-secondary)]">{new Date(task.updated_at).toLocaleString()}</span>
             </div>
-            <div className="mt-5 grid gap-2 text-sm text-[var(--text-secondary)] md:grid-cols-2">
-              <p>Created: {new Date(task.created_at).toLocaleString()}</p>
-              <p>Updated: {new Date(task.updated_at).toLocaleString()}</p>
-            </div>
+            <p className="mt-5 text-lg leading-8 text-[var(--text-primary)]">{task.description}</p>
           </div>
-          <div className="w-full max-w-sm">
+          <div className="min-w-[14rem] flex-1 lg:max-w-sm">
             <p className="mb-2 font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--text-secondary)]">Confidence</p>
             <ConfidenceBar score={task.confidence} />
           </div>
@@ -125,47 +127,35 @@ export default function TaskDetailPage() {
       </Card>
 
       <Card>
-        <p className="font-display text-2xl text-[var(--text-primary)]">On-chain proof</p>
-        <div className="mt-5 space-y-3">
-          <ProofRow label="Escrow UID" value={task.escrow_uid}>
-            {task.escrow_uid ? (
-              <>
-                <span className="font-mono">{truncateMiddle(task.escrow_uid, 14, 8)}</span>
-                <CopyButton label="Escrow UID" value={task.escrow_uid} />
-                <a className="text-amber-300 hover:text-amber-200" href={`${BASESCAN_BASE}/${task.escrow_uid}`} rel="noreferrer" target="_blank">
-                  <ExternalLink className="h-4 w-4" />
-                </a>
-              </>
-            ) : null}
-          </ProofRow>
-          <ProofRow label="Fulfillment UID" value={task.fulfillment_uid}>
-            {task.fulfillment_uid ? (
-              <>
-                <span className="font-mono">{truncateMiddle(task.fulfillment_uid, 14, 8)}</span>
-                <CopyButton label="Fulfillment UID" value={task.fulfillment_uid} />
-                <a className="text-amber-300 hover:text-amber-200" href={`${BASESCAN_BASE}/${task.fulfillment_uid}`} rel="noreferrer" target="_blank">
-                  <ExternalLink className="h-4 w-4" />
-                </a>
-              </>
-            ) : null}
-          </ProofRow>
-          <ProofRow label="Arbitrate TX">{task.arbitrate_tx ? <TxLink hash={task.arbitrate_tx} /> : null}</ProofRow>
-          <ProofRow label="Collect TX">{task.collect_tx ? <TxLink hash={task.collect_tx} /> : null}</ProofRow>
+        <p className="font-display text-2xl text-[var(--text-primary)]">Signal</p>
+        <div className="mt-5 flex flex-wrap items-center gap-4">
+          <SignalBadge signal={task.signal} />
+          <div className="min-w-[14rem] flex-1 lg:max-w-md">
+            <ConfidenceBar score={report?.confidence_score ?? task.confidence} />
+          </div>
         </div>
       </Card>
 
       <Card>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="font-display text-2xl text-[var(--text-primary)]">IPFS storage</p>
-            <p className="mt-2 text-sm text-[var(--text-secondary)]">The CID is the durable handle for the stored report on Filecoin-backed IPFS infrastructure.</p>
+            <p className="font-display text-2xl text-[var(--text-primary)]">Filecoin Storage</p>
+            <p className="mt-2 text-sm text-[var(--text-secondary)]">CID-backed report storage with public retrieval through IPFS gateways.</p>
           </div>
           {task.result_cid ? <CopyButton label="CID" value={task.result_cid} /> : null}
         </div>
         <div className="mt-5 flex flex-wrap gap-3">
-          {task.result_cid ? (
+          {task.result_cid?.startsWith('bafy') ? (
             <>
               <CidLink cid={task.result_cid} />
+              <a
+                className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--surface-2)] px-4 py-2 text-sm text-[var(--text-primary)]"
+                href={`${IPFS_GATEWAY}/${task.result_cid}`}
+                rel="noreferrer"
+                target="_blank"
+              >
+                View on IPFS
+              </a>
               <a
                 className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--surface-2)] px-4 py-2 text-sm text-[var(--text-primary)]"
                 href={`https://gateway.pinata.cloud/ipfs/${task.result_cid}`}
@@ -174,58 +164,63 @@ export default function TaskDetailPage() {
               >
                 View on Pinata
               </a>
-              <a
-                className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--surface-2)] px-4 py-2 text-sm text-[var(--text-primary)]"
-                href={`${IPFS_GATEWAY}/${task.result_cid}`}
-                rel="noreferrer"
-                target="_blank"
-              >
-                Download JSON
-              </a>
             </>
           ) : (
             <p className="text-sm text-[var(--text-secondary)]">No CID has been attached yet.</p>
           )}
         </div>
         {ipfsQuery.isError ? (
-          <div className="mt-5">
-            <ErrorState message={ipfsQuery.error.message} />
-          </div>
+          <p className="mt-5 text-sm text-[var(--text-secondary)]">
+            Report stored on Filecoin. CID: {task.result_cid} - accessible via any IPFS gateway.
+          </p>
         ) : null}
       </Card>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)]">
+      <Card>
+        <p className="font-display text-2xl text-[var(--text-primary)]">On-Chain Proof</p>
+        <div className="mt-5 space-y-3">
+          <ProofRow label="Escrow UID" link={task.escrow_uid ? `${BASESCAN}/${task.escrow_uid}` : undefined} value={task.escrow_uid} />
+          <ProofRow
+            label="Fulfillment UID"
+            link={task.fulfillment_uid ? `${BASESCAN}/${task.fulfillment_uid}` : undefined}
+            value={task.fulfillment_uid}
+          />
+          <div className="grid gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] px-4 py-4 md:grid-cols-[11rem,1fr] md:items-center">
+            <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--text-secondary)]">Arbitrate TX</p>
+            {task.arbitrate_tx ? <TxLink hash={task.arbitrate_tx} /> : <span className="text-sm text-[var(--text-secondary)]">Unavailable</span>}
+          </div>
+          <div className="grid gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] px-4 py-4 md:grid-cols-[11rem,1fr] md:items-center">
+            <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--text-secondary)]">Collect TX</p>
+            {task.collect_tx ? <TxLink hash={task.collect_tx} /> : <span className="text-sm text-[var(--text-secondary)]">Unavailable</span>}
+          </div>
+        </div>
+      </Card>
+
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(18rem,0.9fr)]">
         <Card>
           <div className="flex items-center justify-between gap-3">
-            <p className="font-display text-2xl text-[var(--text-primary)]">Research report</p>
+            <p className="font-display text-2xl text-[var(--text-primary)]">Report</p>
             {report?.smart_money_signal ? <SignalBadge signal={report.smart_money_signal} /> : null}
           </div>
 
           {ipfsQuery.isLoading ? (
             <div className="mt-5">
-              <LoadingPanel label="Fetching CID content..." />
+              <LoadingPanel label="Fetching report from IPFS..." />
             </div>
           ) : report ? (
             <div className="mt-6 space-y-6">
               {report.executive_summary ? (
                 <div>
-                  <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--text-secondary)]">Executive summary</p>
+                  <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--text-secondary)]">Executive Summary</p>
                   <div className="prose-report mt-3 text-sm">
                     <ReactMarkdown>{report.executive_summary}</ReactMarkdown>
                   </div>
                 </div>
               ) : null}
 
-              {report.market_narrative ? (
-                <div>
-                  <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--text-secondary)]">Market narrative</p>
-                  <p className="mt-3 text-sm leading-8 text-[var(--text-secondary)]">{report.market_narrative}</p>
-                </div>
-              ) : null}
-
               {report.key_findings?.length ? (
                 <div>
-                  <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--text-secondary)]">Key findings</p>
+                  <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--text-secondary)]">Key Findings</p>
                   <ul className="mt-3 space-y-3 text-sm leading-7 text-[var(--text-secondary)]">
                     {report.key_findings.map((finding) => (
                       <li key={finding}>{finding}</li>
@@ -236,24 +231,24 @@ export default function TaskDetailPage() {
 
               {report.key_tokens?.length ? (
                 <div>
-                  <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--text-secondary)]">Key tokens</p>
+                  <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--text-secondary)]">Key Tokens</p>
                   <div className="mt-3 overflow-x-auto rounded-3xl border border-[var(--border)]">
                     <table className="min-w-full text-left">
                       <thead className="border-b border-[var(--border)] bg-[var(--surface-2)]">
                         <tr className="text-xs uppercase tracking-[0.18em] text-[var(--text-secondary)]">
                           <th className="px-4 py-3">Symbol</th>
-                          <th className="px-4 py-3">Thesis</th>
-                          <th className="px-4 py-3">Sentiment</th>
+                          <th className="px-4 py-3">Signal</th>
                           <th className="px-4 py-3">Risk</th>
+                          <th className="px-4 py-3">Thesis</th>
                         </tr>
                       </thead>
                       <tbody>
                         {report.key_tokens.map((token) => (
                           <tr className="border-b border-[var(--border)] text-sm text-[var(--text-secondary)]" key={`${token.symbol}-${token.thesis}`}>
                             <td className="px-4 py-4 font-mono text-[var(--text-primary)]">{token.symbol}</td>
-                            <td className="px-4 py-4">{token.thesis}</td>
                             <td className="px-4 py-4">{toTitleCase(token.sentiment)}</td>
                             <td className="px-4 py-4">{token.risk_level ? toTitleCase(token.risk_level) : 'N/A'}</td>
+                            <td className="px-4 py-4">{token.thesis}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -273,26 +268,23 @@ export default function TaskDetailPage() {
                 </div>
               ) : null}
             </div>
+          ) : task.summary ? (
+            <div className="mt-6 space-y-5">
+              <p className="text-sm leading-8 text-[var(--text-secondary)]">{task.summary}</p>
+              <p className="text-sm text-[var(--text-secondary)]">
+                Report on Filecoin. Try: {task.result_cid ? `ipfs.io/ipfs/${task.result_cid}` : 'No CID yet'}
+              </p>
+            </div>
           ) : (
-            <EmptyState body="CID content will render here once the report is available through the public gateway." title="Report pending" />
+            <EmptyState body="Report stored on Filecoin. Try: ipfs.io/ipfs/{cid}" title="Report not yet accessible" />
           )}
         </Card>
 
         <Card>
-          <p className="font-display text-2xl text-[var(--text-primary)]">Report metadata</p>
+          <p className="font-display text-2xl text-[var(--text-primary)]">Metadata</p>
           <div className="mt-6 space-y-4">
             <div>
-              <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--text-secondary)]">Signal + confidence</p>
-              <div className="mt-3 flex flex-wrap items-center gap-3">
-                <SignalBadge signal={report?.smart_money_signal ?? task.signal} />
-                <div className="min-w-[12rem] flex-1">
-                  <ConfidenceBar score={report?.confidence_score ?? task.confidence} />
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--text-secondary)]">Data sources</p>
+              <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--text-secondary)]">Data Sources</p>
               <div className="mt-3 flex flex-wrap gap-2">
                 {report?.data_sources?.length ? (
                   report.data_sources.map((source) => (
@@ -301,17 +293,24 @@ export default function TaskDetailPage() {
                     </span>
                   ))
                 ) : (
-                  <span className="text-sm text-[var(--text-secondary)]">No data sources published yet.</span>
+                  <span className="text-sm text-[var(--text-secondary)]">No sources published yet.</span>
                 )}
               </div>
             </div>
 
             <div>
-              <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--text-secondary)]">Generated at</p>
+              <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--text-secondary)]">Generated At</p>
               <p className="mt-2 text-sm text-[var(--text-primary)]">
-                {report?.generated_at ? new Date(report.generated_at).toLocaleString() : 'Awaiting CID payload'}
+                {report?.generated_at ? new Date(report.generated_at).toLocaleString() : new Date(task.updated_at).toLocaleString()}
               </p>
             </div>
+
+            {task.user_chat_id ? (
+              <div>
+                <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--text-secondary)]">Telegram Chat</p>
+                <p className="mt-2 text-sm text-[var(--text-primary)]">{task.user_chat_id.replace(/^telegram:/, '')}</p>
+              </div>
+            ) : null}
 
             {pdfUrl ? (
               <a href={pdfUrl} rel="noreferrer" target="_blank">

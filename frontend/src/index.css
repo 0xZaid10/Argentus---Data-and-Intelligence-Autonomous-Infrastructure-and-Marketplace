@@ -9,6 +9,9 @@
 }
 
 :root {
+  --bg: #0a0a0b;
+  --bg2: #111113;
+  --bg3: #1a1a1e;
   --bg-primary: #0a0a0b;
   --bg-secondary: #111113;
   --bg-tertiary: #1a1a1e;
@@ -19,9 +22,13 @@
   --border-strong: rgba(255, 255, 255, 0.14);
   --text-primary: #f0f0f4;
   --text-secondary: #9d9daf;
+  --text: #f0f0f4;
+  --muted: #8888a0;
   --accent-gold: #f59e0b;
   --accent-gold-dim: #92400e;
   --accent-gold-strong: #fbbf24;
+  --gold: #f59e0b;
+  --gold-dim: #78350f;
   --green: #10b981;
   --red: #ef4444;
   --yellow: #f59e0b;

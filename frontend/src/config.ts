@@ -1,8 +1,11 @@
-export const API_BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:3001'
-export const RESEARCH_BASE = import.meta.env.VITE_RESEARCH_BASE ?? 'http://localhost:3000'
+export const API_BASE = import.meta.env.VITE_API_BASE ?? 'http://104.207.76.143'
+export const RESEARCH_BASE = import.meta.env.VITE_RESEARCH_BASE ?? 'http://104.207.76.143/research'
 export const IPFS_GATEWAY = import.meta.env.VITE_IPFS_GATEWAY ?? 'https://gateway.pinata.cloud/ipfs'
-export const BASESCAN_BASE = 'https://sepolia.basescan.org/tx'
-export const FILECOIN_EXPLORER = 'https://filfox.info/en/message'
+export const BASESCAN = 'https://sepolia.basescan.org/tx'
+export const FILFOX = 'https://filfox.info/en/message'
+
+export const BASESCAN_BASE = BASESCAN
+export const FILECOIN_EXPLORER = FILFOX
 
 export const CONTRACTS = {
   escrow: '0x1Fe964348Ec42D9Bb1A072503ce8b4744266FF43',
@@ -13,8 +16,8 @@ export const CONTRACTS = {
 export interface ProofExample {
   task: string
   cid: string
-  arbitrate_tx?: string
-  collect_tx?: string
+  arbitrate_tx: string
+  collect_tx: string
   signal: 'bullish' | 'bearish' | 'neutral'
   confidence: number
 }
@@ -29,22 +32,32 @@ export const PROOF_EXAMPLES: ProofExample[] = [
     confidence: 0.58,
   },
   {
-    task: 'ETH DeFi Ecosystem Analysis',
-    cid: 'bafybeidw7mnxrqefwkdcyumukonh7mm5rngthuehb4rgbcktvlsmvspnl4',
+    task: 'BTC Whale Accumulation',
+    cid: 'bafybeift4ldyyeoycitlkafm6rsh5ek2tzpeqn3hjza4mkr6tyvxgboka4',
     arbitrate_tx: '0x8c6741c6387ed3ec0eae76449552f0d1cf4be4eefb7b10a5befdff9b7ad92c48',
     collect_tx: '0x949459537b910394dc7ada22213da0786c27917ad32b75187d093d8023ba8bcd',
-    signal: 'bearish',
-    confidence: 0.45,
-  },
-  {
-    task: 'BTC Whale Accumulation Analysis',
-    cid: 'bafybeift4ldyyeoycitlkafm6rsh5ek2tzpeqn3hjza4mkr6tyvxgboka4',
     signal: 'bullish',
     confidence: 0.85,
+  },
+  {
+    task: 'SOL DeFi Ecosystem',
+    cid: 'bafybeidikq7plddqqfdg7r325ezv6ldjif3mnfocho6zraesawthocxh2u',
+    arbitrate_tx: '0x11811deeb6c8baa0d6e56a49ff8740442a3b3bcd7b7c55a1dcf801787759ccd1',
+    collect_tx: '0xa2864c4c0fb24c0576bca188f7ff52a057e0d5df82b0d5e97af6e0172b9328b7',
+    signal: 'neutral',
+    confidence: 0.65,
+  },
+  {
+    task: 'Marketplace: SOL TVL',
+    cid: 'bafybeic4xkbujppvrn5utvzzcxgyxrxkos2dkkgcsfwyo6rwzecxprzzuu',
+    arbitrate_tx: '0x27a279102e30472d4764cd338551a5b6ccc2451ab7fcabbfc398e6f69980e09d',
+    collect_tx: '0x72669f1c24875a735173b7d2247dce3db93bf4e55435e94fdde03a8aaf683c8a',
+    signal: 'bullish',
+    confidence: 0.82,
   },
 ]
 
 export const APP_COPY = {
   title: 'Argentus',
-  subtitle: 'Autonomous Intelligence Infrastructure for the Agentic Economy',
+  subtitle: 'Ask. Verify. Trust.',
 } as const

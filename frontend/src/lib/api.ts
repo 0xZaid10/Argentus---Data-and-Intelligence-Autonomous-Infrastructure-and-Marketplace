@@ -48,7 +48,8 @@ export interface MarketplaceRequest {
 export interface MarketplaceSubmission {
   id: string
   request_id: string
-  cid: string
+  cid: string | null
+  raw_content: string | null
   submitter_address: string | null
   fulfillment_uid: string | null
   description: string | null
@@ -82,8 +83,8 @@ export interface AgentStatus {
 type ServiceName = 'backend' | 'research'
 
 const serviceErrors: Record<ServiceName, string> = {
-  backend: 'Backend service unavailable. Start with: `cd ipfs/backend && npm run dev`',
-  research: 'Research service unavailable. Start with: `cd ipfs/research && npm run dev`',
+  backend: 'Service offline. VPS: 104.207.76.143',
+  research: 'Service offline. VPS: 104.207.76.143',
 }
 
 async function fetchJson<T>(
@@ -134,13 +135,13 @@ export const fetchTasks = async (status?: string): Promise<Task[]> => {
 export const fetchTask = async (id: string): Promise<Task> =>
   (isDemoTaskId(id) ? Promise.resolve(getDemoTask(id)!) : fetchJson<Task>(`${API_BASE}/api/tasks/${id}`, undefined, 'backend'))
 
-export const createTask = async (description: string, userChatId?: string): Promise<Task> =>
+export const createTask = async (description: string): Promise<Task> =>
   fetchJson<Task>(
     `${API_BASE}/api/tasks`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ description, user_chat_id: userChatId }),
+      body: JSON.stringify({ description, user_chat_id: null }),
     },
     'backend',
     8_000,
@@ -185,9 +186,10 @@ export const createMarketplaceRequest = async (payload: {
   return data.request
 }
 
-export const submitMarketplaceCID = async (payload: {
+export const submitMarketplaceSubmission = async (payload: {
   request_id: string
-  cid: string
+  cid?: string
+  raw_content?: string
   submitter_address?: string
   description?: string
 }): Promise<MarketplaceSubmission> => {
@@ -215,10 +217,6 @@ export const fetchMarketplaceStats = async () =>
   }>(`${API_BASE}/api/marketplace/stats`, undefined, 'backend')
 
 export const fetchLeaderboard = async () => {
-  if (!API_BASE) {
-    return DEMO_LEADERBOARD
-  }
-
   const data = await fetchJson<{ leaderboard?: Array<Record<string, unknown>> }>(
     `${API_BASE}/api/marketplace/leaderboard`,
     undefined,
@@ -288,9 +286,14 @@ export const fetchIpfsReport = async <T>(cid: string, gateway: string): Promise<
 
     return response.json() as Promise<T>
   } catch {
-    throw new Error(`CID not yet available on public gateways. Try: \`ipfs.io/ipfs/${cid}\``)
+    throw new Error(`Report on Filecoin. Try: ipfs.io/ipfs/${cid}`)
   }
 }
+
+export const fetchRequests = fetchMarketplaceRequests
+export const fetchRequest = fetchMarketplaceRequest
+export const createRequest = createMarketplaceRequest
+export const submitToMarketplace = submitMarketplaceSubmission
 
 export const getDemoDefaults = () => ({
   agents: DEMO_AGENTS,
