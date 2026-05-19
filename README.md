@@ -217,54 +217,53 @@ Results arrive in 2-3 minutes: signal, confidence score, Filecoin CID, PDF repor
 
 ```
 Argentus/
-├── da/
-│   ├── backend/              # Express API + escrow + marketplace + PDFs
-│   │   ├── src/
-│   │   │   ├── routes/
-│   │   │   │   ├── tasks.js          # Task CRUD + auto-pipeline
-│   │   │   │   ├── marketplace.js    # Full marketplace lifecycle
-│   │   │   │   ├── escrow.js         # Alkahest contract calls
-│   │   │   │   └── agents.js         # Agent status
-│   │   │   ├── services/
-│   │   │   │   ├── escrow/
-│   │   │   │   │   └── alkahest.js   # viem contract interactions
-│   │   │   │   └── reports.js        # PDF generation + Telegram
-│   │   │   └── db.js                 # SQLite init
-│   │   └── package.json
-│   │
-│   ├── research/             # TypeScript intelligence engine
-│   │   ├── src/
-│   │   │   ├── agent/
-│   │   │   │   ├── orchestrator.ts   # Main pipeline + Filecoin upload
-│   │   │   │   ├── planner.ts        # LLM capability selection
-│   │   │   │   └── capabilities/     # onchain, market, community, reddit
-│   │   │   ├── services/
-│   │   │   │   ├── dataAggregator.ts # 7 free APIs
-│   │   │   │   ├── webSearch.ts      # SerpApi
-│   │   │   │   └── llm.ts            # TokenRouter client
-│   │   │   └── api/routes/research.ts
-│   │   └── package.json
-│   │
-│   ├── mcp-server/           # MCP memory server
-│   │   ├── src/
-│   │   │   ├── http.js       # HTTP on :3002
-│   │   │   ├── index.js      # stdio MCP transport
-│   │   │   └── tools.js      # MCP tool definitions
-│   │   └── package.json
-│   │
-│   └── agents/               # OpenClaw agent configs
-│       ├── coordinator/
-│       │   ├── AGENTS.md     # Task routing instructions
-│       │   ├── SOUL.md       # Behavior/personality
-│       │   └── HEARTBEAT.md  # 30min schedule
-│       ├── research/
-│       │   ├── AGENTS.md
-│       │   └── skills/research-intel/SKILL.md
-│       ├── verifier/
-│       │   ├── AGENTS.md
-│       │   └── skills/verify-cid/SKILL.md
-│       └── trading/
-│           └── AGENTS.md
+├── backend/                  # Express API + escrow + marketplace + PDFs
+│   ├── src/
+│   │   ├── routes/
+│   │   │   ├── tasks.js          # Task CRUD + auto-pipeline
+│   │   │   ├── marketplace.js    # Full marketplace lifecycle
+│   │   │   ├── escrow.js         # Alkahest contract calls
+│   │   │   └── agents.js         # Agent status
+│   │   ├── services/
+│   │   │   ├── escrow/
+│   │   │   │   └── alkahest.js   # viem contract interactions
+│   │   │   └── reports.js        # PDF generation + Telegram
+│   │   └── db.js                 # SQLite init
+│   └── package.json
+│
+├── research/                 # TypeScript intelligence engine
+│   ├── src/
+│   │   ├── agent/
+│   │   │   ├── orchestrator.ts   # Main pipeline + Filecoin upload
+│   │   │   ├── planner.ts        # LLM capability selection
+│   │   │   └── capabilities/     # onchain, market, community, reddit
+│   │   ├── services/
+│   │   │   ├── dataAggregator.ts # 7 free APIs
+│   │   │   ├── webSearch.ts      # SerpApi
+│   │   │   └── llm.ts            # TokenRouter client
+│   │   └── api/routes/research.ts
+│   └── package.json
+│
+├── mcp-server/               # MCP memory server
+│   ├── src/
+│   │   ├── http.js           # HTTP on :3002
+│   │   ├── index.js          # stdio MCP transport
+│   │   └── tools.js          # MCP tool definitions
+│   └── package.json
+│
+├── agents/                   # OpenClaw agent configs
+│   ├── coordinator/
+│   │   ├── AGENTS.md         # Task routing instructions
+│   │   ├── SOUL.md           # Behavior/personality
+│   │   └── HEARTBEAT.md      # 30min schedule
+│   ├── research/
+│   │   ├── AGENTS.md
+│   │   └── skills/research-intel/SKILL.md
+│   ├── verifier/
+│   │   ├── AGENTS.md
+│   │   └── skills/verify-cid/SKILL.md
+│   └── trading/
+│       └── AGENTS.md
 │
 └── frontend/                 # React dashboard
     ├── src/
